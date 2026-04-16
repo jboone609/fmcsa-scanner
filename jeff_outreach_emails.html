@@ -265,14 +265,14 @@ function genSafety(c) {
       ? `I was reviewing ${n}'s FMCSA data and wanted to share what I found:`
       : `I was reviewing ${n}'s FMCSA data and a couple numbers stood out:`;
     let bullets = [];
-    bullets.push(`<b><u>Driver OOS rate of ${oos.toFixed(1)}%</u></b>, which is ${drvPct}% higher than the ${NATL_DRV_OOS}% national average`);
+    bullets.push(`<b>Driver OOS rate of ${oos.toFixed(1)}%</b>, which is <b><u>${drvPct}% higher than the ${NATL_DRV_OOS}% national average</u></b>`);
     if (hasCrashes) {
       let cp = [];
       if (fat > 0) cp.push(`${fat} fatal`);
       if (inj > 0) cp.push(`${inj} with injuries`);
       bullets.push(`<b>${ct} crashes in the last 24 months</b>` + (cp.length ? `, including ${cp.join(' and ')}` : ''));
     }
-    if (hasHighVeh) bullets.push(`<b><u>Vehicle OOS rate of ${voos.toFixed(1)}%</u></b>, which is ${vehPct}% higher than the ${NATL_VEH_OOS}% national average`);
+    if (hasHighVeh) bullets.push(`<b>Vehicle OOS rate of ${voos.toFixed(1)}%</b>, which is <b><u>${vehPct}% higher than the ${NATL_VEH_OOS}% national average</u></b>`);
     let srNote = sr === 'None' ? ' with no safety rating on file' : (sr === 'Conditional' ? ' with a Conditional safety rating' : '');
     bullets.push(`${d} drivers and ${pu} power units${srNote}`);
     let bStr = bullets.map(b => '   \u2022 ' + b).join('\n');
@@ -336,8 +336,8 @@ function genFinance(c) {
       if (inj > 0) cp.push(`${inj} with injuries`);
       bullets.push(`<b>${ct} crashes in 24 months</b>` + (cp.length ? `, including ${cp.join(' and ')}` : ''));
     }
-    bullets.push(`<b><u>Driver OOS rate of ${oos.toFixed(1)}%</u></b>, which is ${drvPct}% higher than the national average`);
-    if (voos > NATL_VEH_OOS) bullets.push(`<b><u>Vehicle OOS rate of ${voos.toFixed(1)}%</u></b>, which is ${vehPct}% higher than the national average`);
+    bullets.push(`<b>Driver OOS rate of ${oos.toFixed(1)}%</b>, which is <b><u>${drvPct}% higher than the national average</u></b>`);
+    if (voos > NATL_VEH_OOS) bullets.push(`<b>Vehicle OOS rate of ${voos.toFixed(1)}%</b>, which is <b><u>${vehPct}% higher than the national average</u></b>`);
     if (ir) bullets.push(`${pu} power units with an estimated annual insurance exposure in the ${ir} range`);
     let bStr = bullets.map(b => '   \u2022 ' + b).join('\n');
     let bridge = fat > 0
