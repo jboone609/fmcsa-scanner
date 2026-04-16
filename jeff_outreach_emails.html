@@ -119,16 +119,33 @@ body{background:#0f1117;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-seri
 .copy-all-btn{background:#3b82f6;border:none;color:#fff;padding:6px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600}
 .copy-all-btn:hover{background:#2563eb}
 .copy-all-btn.copied{background:#059669}
+.src-bar{background:#13151f;padding:8px 30px;border-bottom:1px solid #2a2f42;display:flex;align-items:center;gap:8px;font-size:11px;color:#6b7280}
+.src-bar .tip-wrap{position:relative;display:inline-flex;align-items:center}
+.src-bar .tip-icon{width:15px;height:15px;border-radius:50%;background:#2a2f42;color:#8892a8;font-size:10px;display:inline-flex;align-items:center;justify-content:center;cursor:help;font-weight:700}
+.src-bar .tip-box{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1d2e;border:1px solid #3b82f6;border-radius:6px;padding:10px 14px;width:320px;font-size:11px;line-height:1.5;color:#c9d1d9;z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.src-bar .tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#3b82f6}
+.src-bar .tip-wrap:hover .tip-box{display:block}
 </style>
 </head>
 <body>
 
 <div class="nav">
-<a href="index.html" style="color:#4ade80">Scanner</a>
+<a href="fmcsa_prospect_scanner.html" style="color:#4ade80">Scanner</a>
 <a href="jeff_target_accounts.html" style="color:#c084fc">Pick-Up Targets</a>
 <a href="jeff_drop_candidates.html" style="color:#ef4444">Drop Candidates</a>
 <span style="color:#f59e0b;font-weight:600">Outreach Emails</span>
 <a href="jeff_precall_cards.html" style="color:#60a5fa">Pre-Call Cards</a>
+</div>
+<div class="src-bar">
+<span>Data: FMCSA Prospect Scanner &bull; AI-generated emails</span>
+<span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-box">
+<b>Refresh Schedule</b><br>
+This page is <b>regenerated on demand</b> using the latest scanner data.<br><br>
+<b>Email content:</b> AI-generated from live FMCSA compliance data (inspections, OOS rates, crashes, safety ratings). Tailored per carrier per persona.<br>
+<b>SAFER snapshots:</b> sourced from daily scanner refresh.<br>
+<b>Crash totals:</b> rolling refresh via QC API (~70 carriers/day, full cycle every 7 days).<br>
+<b>CRM fields:</b> from Salesforce export at scan time.
+</span></span>
 </div>
 
 <div class="header">
@@ -232,80 +249,124 @@ function laborRange(d) {
 
 // ─── Email Generators ───
 function genSafety(c) {
-  const n = c.account_name, d = c.drivers||0, oos = c.drv_oos_rate, sr = c.safety_rating||'None', ind = c.industry, v = vertLabel(ind);
-  const [csN, csP] = getCaseStudy('safety', ind, sr, oos);
+  const n = c.account_name, d = c.drivers||0, oos = c.drv_oos_rate, voos = c.veh_oos_rate||0;
+  const sr = c.safety_rating||'None', ind = c.industry, v = vertLabel(ind);
+  const pu = c.power_units||0, ct = c.crash_total||0, fat = c.fatal||0, inj = c.injury||0;
+  const di = c.drv_insp||0;
+  const drvPct = oos && oos > NATL_DRV_OOS ? Math.round(((oos - NATL_DRV_OOS) / NATL_DRV_OOS) * 100) : 0;
+  const vehPct = voos > NATL_VEH_OOS ? Math.round(((voos - NATL_VEH_OOS) / NATL_VEH_OOS) * 100) : 0;
 
-  if (oos && oos > 6.7) {
-    const delta = Math.round(oos - NATL_DRV_OOS);
-    let buf = '';
-    if (sr === 'None') buf = ', especially without a safety rating on file to provide any buffer.';
-    else if (sr === 'Conditional') buf = ' \u2014 and a Conditional rating compounds that exposure.';
-    else buf = '.';
+  if (oos && oos > NATL_DRV_OOS) {
+    const hasFatal = fat > 0;
+    const hasCrashes = ct > 0;
+    const hasHighVeh = voos > NATL_VEH_OOS;
+    let subject = (hasFatal || ct >= 5) ? `${n} -- driver OOS rate and crash history` : `${n} -- driver out-of-service rate`;
+    let intro = hasFatal
+      ? `I was reviewing ${n}'s FMCSA data and wanted to share what I found:`
+      : `I was reviewing ${n}'s FMCSA data and a couple numbers stood out:`;
+    let bullets = [];
+    bullets.push(`<b><u>Driver OOS rate of ${oos.toFixed(1)}%</u></b>, which is ${drvPct}% higher than the ${NATL_DRV_OOS}% national average`);
+    if (hasCrashes) {
+      let cp = [];
+      if (fat > 0) cp.push(`${fat} fatal`);
+      if (inj > 0) cp.push(`${inj} with injuries`);
+      bullets.push(`<b>${ct} crashes in the last 24 months</b>` + (cp.length ? `, including ${cp.join(' and ')}` : ''));
+    }
+    if (hasHighVeh) bullets.push(`<b><u>Vehicle OOS rate of ${voos.toFixed(1)}%</u></b>, which is ${vehPct}% higher than the ${NATL_VEH_OOS}% national average`);
+    let srNote = sr === 'None' ? ' with no safety rating on file' : (sr === 'Conditional' ? ' with a Conditional safety rating' : '');
+    bullets.push(`${d} drivers and ${pu} power units${srNote}`);
+    let bStr = bullets.map(b => '   \u2022 ' + b).join('\n');
+    let bridge;
+    if (hasFatal) bridge = "A driver OOS rate that high combined with fatal crash history is exactly the kind of profile FMCSA's new targeting methodology was designed to catch.  That matters because the enforcement landscape is shifting fast:";
+    else if (hasHighVeh) bridge = `With both driver and vehicle OOS rates above the national average across ${di} inspections, that's a pattern FMCSA's targeting algorithms are built to flag.  And the enforcement environment is getting more aggressive:`;
+    else bridge = `With a driver OOS rate that far above the national average across ${di} inspections, that's the kind of gap FMCSA's targeting algorithms are built to flag.  And the enforcement environment is getting more aggressive:`;
+    let m2 = hasFatal
+      ? '   \u2022 On-site focused reviews are at their <b>highest level in five years</b>'
+      : '   \u2022 The new SMS methodology is <b>10% better at identifying high-risk carriers</b> than the old system';
+    let macro = '   \u2022 <b>94% of FMCSA audits now result in at least one violation</b>, with an average of 6 findings per audit\n' + m2 + '\n   \u2022 Offsite audits are up 400% since 2019, and carriers have just <b>48 hours to submit files digitally</b> when flagged';
     return {
-      subject: `${n} \u2014 driver out-of-service rate`,
-      body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile and your driver out-of-service rate stood out \u2014 ${oos.toFixed(1)}%, which is ${delta} points above the 6.7% national average. With ${d} drivers in ${v} operations, that kind of gap puts a target on your fleet for FMCSA intervention${buf}\n\n[ATTACH SAFER SCREENSHOT HERE]\n\nAt Foley, we work with ${v} fleets your size to tighten driver compliance tracking and close DQ file gaps before they become audit findings. ${csN} ${csP}.\n\nWould you be open to a 10\u201315 minute call to see how ${v} fleets like {{company}} are getting ahead of this?\n\nBest, Jeff`
+      subject,
+      body: `Hi {{first_name}},\n\n${intro}\n\n<b>Your fleet snapshot:</b>\n${bStr}\n\n${bridge}\n${macro}\n\nFMCSA is moving from reactive enforcement to continuous, data-driven oversight.  Foley helps ${v} fleets your size monitor driver compliance continuously and close the gaps that show up in inspection data before they trigger an intervention.\n\nWould a 10-15 minute call make sense to look at what that looks like for ${n}?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
     };
   } else if (oos && oos > 0) {
     return {
-      subject: `${n} \u2014 protecting a strong safety record`,
-      body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile and your driver out-of-service rate of ${oos.toFixed(1)}% is well below the 6.7% national average \u2014 your team has clearly built a strong driver compliance program across ${d} drivers. That's not easy to maintain at scale, especially in ${v} operations.\n\n[ATTACH SAFER SCREENSHOT HERE]\n\nThe fleets we work with that are in that position use Foley to make sure it stays that way \u2014 continuous MVR monitoring, automated DQ file tracking, and real-time alerts if anything starts to slip. ${csN} ${csP}.\n\nWould you be open to a 10\u201315 minute conversation about how similar fleets are protecting records like yours?\n\nBest, Jeff`
+      subject: `${n} -- protecting a strong safety record`,
+      body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile and your driver out-of-service rate of ${oos.toFixed(1)}% is well below the ${NATL_DRV_OOS}% national average.  Your team has clearly built a strong driver compliance program across ${d} drivers.  That's not easy to maintain at scale, especially in ${v} operations.\n\nThe enforcement environment is getting more aggressive, even for compliant carriers:\n   \u2022 <b>94% of FMCSA audits now result in at least one violation</b>, with an average of 6 findings per audit\n   \u2022 The new SMS methodology is <b>10% better at identifying high-risk carriers</b> than the old system\n   \u2022 Offsite audits are up 400% since 2019, and carriers have just <b>48 hours to submit files digitally</b> when flagged\n\nFoley helps ${v} fleets your size make sure strong records stay that way.  Continuous MVR monitoring, automated DQ file tracking, and real-time alerts if anything starts to slip.\n\nWould a 10-15 minute call make sense to see how similar fleets are protecting records like yours?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
     };
   } else {
     if (sr === 'Conditional') {
       return {
-        subject: `${n} \u2014 Conditional safety rating`,
-        body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile and noticed your fleet is currently carrying a Conditional safety rating. With ${d} drivers in ${v} operations, that creates real exposure \u2014 it's the step before Unsatisfactory, and it signals to FMCSA that a compliance review already found gaps.\n\n[ATTACH SAFER SCREENSHOT HERE]\n\nFoley works with ${v} fleets to close the gaps that trigger Conditional findings \u2014 DQ file deficiencies, driver monitoring lapses, and documentation that doesn't hold up under audit. ${csN} ${csP}.\n\nWould you be open to a 10\u201315 minute call to talk through what getting back to Satisfactory looks like?\n\nBest, Jeff`
+        subject: `${n} -- Conditional safety rating`,
+        body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile and noticed your fleet is currently carrying a Conditional safety rating with ${d} drivers in ${v} operations.  That creates real exposure:\n   \u2022 A Conditional rating is one step from Unsatisfactory, and it signals to FMCSA that a compliance review already found gaps\n   \u2022 <b>94% of FMCSA audits now result in at least one violation</b>, with an average of 6 findings per audit\n   \u2022 Offsite audits are up 400% since 2019, and carriers have just <b>48 hours to submit files digitally</b> when flagged\n\nFoley works with ${v} fleets to close the gaps that trigger Conditional findings.  DQ file deficiencies, driver monitoring lapses, and documentation that doesn't hold up under audit.\n\nWould a 10-15 minute call make sense to talk through what getting back to Satisfactory looks like?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
       };
     }
     return {
-      subject: `${n} \u2014 driver compliance at scale`,
-      body: `Hi {{first_name}},\n\nManaging driver compliance across ${d} drivers in ${v} is a real operational lift \u2014 DQ files, MVR monitoring, drug & alcohol testing, and Clearinghouse queries all have to stay current to avoid audit findings.\n\n[ATTACH SAFER SCREENSHOT HERE]\n\nFoley works with ${v} fleets your size to automate the compliance stack and catch issues before they become inspection problems. ${csN} ${csP}.\n\nWould you be open to a 10\u201315 minute call to see how ${v} fleets like {{company}} are handling this?\n\nBest, Jeff`
+      subject: `${n} -- driver compliance at scale`,
+      body: `Hi {{first_name}},\n\nManaging driver compliance across ${d} drivers in ${v} is a real operational lift.  DQ files, MVR monitoring, drug and alcohol testing, and Clearinghouse queries all have to stay current to avoid audit findings.\n\nThe enforcement environment is making that harder:\n   \u2022 <b>94% of FMCSA audits now result in at least one violation</b>, with an average of 6 findings per audit\n   \u2022 The new SMS methodology is <b>10% better at identifying high-risk carriers</b> than the old system\n   \u2022 Offsite audits are up 400% since 2019, and carriers have just <b>48 hours to submit files digitally</b> when flagged\n\nFoley helps ${v} fleets your size automate the compliance stack and catch issues before they become inspection problems.\n\nWould a 10-15 minute call make sense to see how ${v} fleets like ${n} are handling this?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
     };
   }
 }
 
 function genHR(c) {
-  const n = c.account_name, d = c.drivers||0, v = vertLabel(c.industry);
-  const [csN, csP] = getCaseStudy('hr', c.industry);
-  const scale = d > 300 ? ' At that scale, the admin lift adds up fast.' : '';
+  const n = c.account_name, d = c.drivers||0, oos = c.drv_oos_rate, v = vertLabel(c.industry);
+  const drvPct = oos && oos > NATL_DRV_OOS ? Math.round(((oos - NATL_DRV_OOS) / NATL_DRV_OOS) * 100) : 0;
+  const sizeWord = d > 300 ? 'serious' : 'real';
+  let oosLine = '';
+  if (drvPct > 0) oosLine = `\n\n${n}'s driver OOS rate is currently ${drvPct}% higher than the national average, which often traces back to gaps in driver screening and qualification documentation.  That's a solvable problem on the front end.`;
   return {
     subject: `Driver onboarding at ${n}`,
-    body: `Hi {{first_name}},\n\nManaging onboarding compliance for ${d} drivers in ${v} isn't a small lift \u2014 DQ files, drug testing, Clearinghouse queries, and background checks all have to clear before anyone gets behind the wheel.${scale}\n\nMost HR teams at fleets like {{company}} tell us they're spending more time managing compliance paperwork than actual recruiting. Foley automates the full stack \u2014 driver files, MVR monitoring, drug & alcohol, Clearinghouse \u2014 so your team can focus on hiring, not documentation. ${csN} ${csP}.\n\nWorth a 10\u201315 minute call to see what that looks like for {{company}}?\n\nBest, Jeff`
+    body: `Hi {{first_name}},\n\nOnboarding compliance for ${d} drivers is a ${sizeWord} operational lift.  DQ files, drug testing, Clearinghouse queries, MVR pulls, and background checks all have to clear before anyone gets behind the wheel.  At that scale, the admin lift adds up fast.\n\nThat process is getting harder to manage manually, and the cost of getting it wrong is going up:\n   \u2022 <b>FMCSA collected $27 million in fines last year</b>, and penalty amounts have increased 20% in the last four years\n   \u2022 <b>Offsite audits are up 400%</b>, with a 48-hour window to submit files digitally when flagged\n   \u2022 Nearly <b>57% of audits target companies with fewer than 7 power units</b>, so no fleet size is flying under the radar${oosLine}\n\nFoley automates the full onboarding compliance stack for ${v} fleets your size.  Driver files, MVR monitoring, drug and alcohol, Clearinghouse.  Your team focuses on hiring, not documentation.\n\nWorth a 10-15 minute call to see what that looks like for ${n}?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
   };
 }
 
 function genFinance(c) {
-  const n = c.account_name, d = c.drivers||0, pu = c.power_units||0, oos = c.drv_oos_rate, sr = c.safety_rating||'None', v = vertLabel(c.industry);
-  const [csN, csP] = getCaseStudy('finance', c.industry);
+  const n = c.account_name, d = c.drivers||0, pu = c.power_units||0, oos = c.drv_oos_rate, voos = c.veh_oos_rate||0;
+  const sr = c.safety_rating||'None', v = vertLabel(c.industry);
+  const ct = c.crash_total||0, fat = c.fatal||0, inj = c.injury||0;
   const ir = pu > 0 ? insRange(pu) : null;
   const lr = d > 0 ? laborRange(d) : null;
+  const drvPct = oos && oos > NATL_DRV_OOS ? Math.round(((oos - NATL_DRV_OOS) / NATL_DRV_OOS) * 100) : 0;
+  const vehPct = voos > NATL_VEH_OOS ? Math.round(((voos - NATL_VEH_OOS) / NATL_VEH_OOS) * 100) : 0;
 
-  if (oos && oos > 6.7) {
-    const delta = Math.round(oos - NATL_DRV_OOS);
-    let ins = '';
-    if (ir) ins = ` With ${pu} power units, {{company}}'s estimated annual insurance exposure sits in the ${ir} range, and that OOS gap is exactly the kind of metric insurers weigh at renewal.`;
+  if (oos && oos > NATL_DRV_OOS) {
+    let bullets = [];
+    if (fat > 0 || ct >= 5) {
+      let cp = [];
+      if (fat > 0) cp.push(`${fat} fatal`);
+      if (inj > 0) cp.push(`${inj} with injuries`);
+      bullets.push(`<b>${ct} crashes in 24 months</b>` + (cp.length ? `, including ${cp.join(' and ')}` : ''));
+    }
+    bullets.push(`<b><u>Driver OOS rate of ${oos.toFixed(1)}%</u></b>, which is ${drvPct}% higher than the national average`);
+    if (voos > NATL_VEH_OOS) bullets.push(`<b><u>Vehicle OOS rate of ${voos.toFixed(1)}%</u></b>, which is ${vehPct}% higher than the national average`);
+    if (ir) bullets.push(`${pu} power units with an estimated annual insurance exposure in the ${ir} range`);
+    let bStr = bullets.map(b => '   \u2022 ' + b).join('\n');
+    let bridge = fat > 0
+      ? "Fatal crashes and elevated OOS rates are the two metrics insurers weigh heaviest at renewal.  The financial exposure here is significant, and the enforcement environment is making it worse:"
+      : "OOS rates are one of the first things insurers look at during renewal, and the gap here is significant.  That financial pressure is compounding across the industry:";
+    let crashRef = fat > 0 ? 'Crash frequency, OOS rates' : 'OOS rates, crash counts';
+    let macro = '   \u2022 <b>FMCSA fines increased to $27 million last year</b>, and penalty amounts go up automatically every year by law.  They\'ve jumped 20% in four years.\n   \u2022 <b>Nearly 1 in 4 audits now results in a fine</b>, and FMCSA\'s new targeting algorithm is 10% better at finding high-risk carriers\n   \u2022 Insurers are increasingly pulling FMCSA data directly into underwriting decisions.  ' + crashRef + ', and safety ratings all factor into premium pricing.';
     return {
-      subject: `Compliance cost exposure \u2014 ${n}`,
-      body: `Hi {{first_name}},\n\nA fleet of ${d} drivers with a driver out-of-service rate of ${oos.toFixed(1)}% \u2014 ${delta} points above the 6.7% national average \u2014 carries quantifiable exposure that shows up in insurance renewals and audit liability.${ins}\n\n${csN} ${csP}.\n\nWould 10\u201315 minutes to walk through what that looks like financially for {{company}} make sense?\n\nBest, Jeff`
+      subject: `Compliance cost exposure -- ${n}`,
+      body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile and wanted to flag some numbers that typically show up in insurance conversations:\n\n<b>Your fleet snapshot:</b>\n${bStr}\n\n${bridge}\n${macro}\n\nFoley helps ${v} fleets centralize compliance data and close the gaps that drive OOS rates up.  That documentation also gives you a stronger story to tell underwriters at renewal.\n\nWould 10-15 minutes to walk through the cost side make sense for ${n}?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
     };
   } else if (oos && oos > 0) {
-    let lab = lr ? `At your fleet size, compliance labor alone typically runs ${lr} annually. ` : '';
+    let lab = lr ? `At your fleet size, compliance labor alone typically runs ${lr} annually.  ` : '';
     return {
-      subject: `Compliance efficiency \u2014 ${n}`,
-      body: `Hi {{first_name}},\n\nA fleet of ${d} drivers with a driver out-of-service rate of ${oos.toFixed(1)}% \u2014 well below the 6.7% national average \u2014 means {{company}}'s compliance discipline is already strong. The financial question is whether the manual effort sustaining that record is costing more than it needs to.\n\n${lab}Foley works with ${v} fleets to cut that overhead by automating DQ files, MVR monitoring, and drug & alcohol tracking \u2014 without putting the safety record at risk. ${csN} ${csP}.\n\nWould 10\u201315 minutes to walk through the cost side make sense?\n\nBest, Jeff`
+      subject: `Compliance efficiency -- ${n}`,
+      body: `Hi {{first_name}},\n\nA fleet of ${d} drivers with a driver out-of-service rate of ${oos.toFixed(1)}%, well below the ${NATL_DRV_OOS}% national average, means ${n}'s compliance discipline is already strong.  The financial question is whether the manual effort sustaining that record is costing more than it needs to.\n\n${lab}The enforcement environment is driving compliance costs up across the industry:\n   \u2022 <b>FMCSA fines increased to $27 million last year</b>, and penalty amounts have increased 20% in four years\n   \u2022 <b>Nearly 1 in 4 audits now results in a fine</b>, and FMCSA's new targeting algorithm is 10% better at finding high-risk carriers\n   \u2022 Insurers are increasingly pulling FMCSA data directly into underwriting decisions.  OOS rates, crash counts, and safety ratings all factor into premium pricing.\n\nFoley helps ${v} fleets cut compliance overhead by automating DQ files, MVR monitoring, and drug and alcohol tracking, without putting the safety record at risk.\n\nWould 10-15 minutes to walk through the cost side make sense?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
     };
   } else {
     if (sr === 'Conditional') {
-      let ins = ir ? ` With ${pu} power units, {{company}}'s estimated annual insurance exposure sits in the ${ir} range \u2014 and a Conditional rating pushes that toward the high end.` : '';
+      let ins = ir ? `  With ${pu} power units, ${n}'s estimated annual insurance exposure sits in the ${ir} range, and a Conditional rating pushes that toward the high end.` : '';
       return {
-        subject: `Compliance cost exposure \u2014 ${n}`,
-        body: `Hi {{first_name}},\n\nA fleet of ${d} drivers carrying a Conditional safety rating creates financial exposure on two fronts: FMCSA can levy fines starting at $16,000 per violation if conditions aren't remediated, and insurers treat Conditional ratings as a pricing signal at renewal.${ins}\n\nFoley works with ${v} fleets to close compliance gaps that drive Conditional findings and get documentation audit-ready. ${csN} ${csP}.\n\nWould 10\u201315 minutes to walk through the cost side for {{company}} make sense?\n\nBest, Jeff`
+        subject: `Compliance cost exposure -- ${n}`,
+        body: `Hi {{first_name}},\n\nA fleet of ${d} drivers carrying a Conditional safety rating creates financial exposure on two fronts:\n   \u2022 FMCSA can levy fines starting at $16,000 per violation if conditions aren't remediated\n   \u2022 Insurers treat Conditional ratings as a pricing signal at renewal${ins}\n\nThe enforcement environment is compounding that pressure:\n   \u2022 <b>FMCSA fines increased to $27 million last year</b>, and penalty amounts have increased 20% in four years\n   \u2022 <b>Nearly 1 in 4 audits now results in a fine</b>, and FMCSA's new targeting algorithm is 10% better at finding high-risk carriers\n   \u2022 Insurers are increasingly pulling FMCSA data directly into underwriting decisions.  OOS rates, crash counts, and safety ratings all factor into premium pricing.\n\nFoley helps ${v} fleets close compliance gaps that drive Conditional findings and get documentation audit-ready.\n\nWould 10-15 minutes to walk through the cost side for ${n} make sense?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
       };
     }
-    let lab = lr ? `typically ${lr} annually in compliance labor alone. ` : '';
+    let lab = lr ? `, typically ${lr} annually in compliance labor alone` : '';
     return {
-      subject: `Compliance cost exposure \u2014 ${n}`,
-      body: `Hi {{first_name}},\n\nManaging compliance across ${d} drivers carries real cost \u2014 ${lab}Most of that spend is manual process: DQ files, MVR pulls, drug & alcohol tracking, Clearinghouse queries. The question is how much of that is automated vs. burning admin hours.\n\nFoley works with ${v} fleets to cut compliance overhead by centralizing the full stack. ${csN} ${csP}.\n\nWould 10\u201315 minutes to walk through what that looks like financially for {{company}} make sense?\n\nBest, Jeff`
+      subject: `Compliance cost exposure -- ${n}`,
+      body: `Hi {{first_name}},\n\nManaging compliance across ${d} drivers carries real cost${lab}.  Most of that spend is manual process: DQ files, MVR pulls, drug and alcohol tracking, Clearinghouse queries.\n\nThe enforcement environment is driving those costs up:\n   \u2022 <b>FMCSA fines increased to $27 million last year</b>, and penalty amounts have increased 20% in four years\n   \u2022 <b>Nearly 1 in 4 audits now results in a fine</b>, and FMCSA's new targeting algorithm is 10% better at finding high-risk carriers\n   \u2022 Insurers are increasingly pulling FMCSA data directly into underwriting decisions.  OOS rates, crash counts, and safety ratings all factor into premium pricing.\n\nFoley helps ${v} fleets cut compliance overhead by centralizing the full stack.\n\nWould 10-15 minutes to walk through what that looks like financially for ${n} make sense?\n\nBest,\nJeff Boone\nEnterprise Account Executive | Foley`
     };
   }
 }
@@ -405,8 +466,7 @@ function personaCard(type, label, colorCls, subject, body, idx, isSafety) {
     </div>
     <div class="persona-body">
       <div class="email-subject">Subject: ${esc(subject)}</div>
-      <div class="email-body" id="${id}-body">${esc(body)}</div>
-      ${isSafety ? '<div class="attach-note">&#128206; ATTACH SAFER SNAPSHOT ABOVE TO THIS EMAIL</div>' : ''}
+      <div class="email-body" id="${id}-body">${body}</div>
     </div>
   </div>`;
 }
@@ -517,30 +577,55 @@ function copyEmail(btn, bodyId) {
   const el = document.getElementById(bodyId);
   const persona = el.closest('.persona');
   const subjectEl = persona.querySelector('.email-subject');
-  const text = subjectEl.textContent + '\n\n' + el.textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'Copied!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
-  });
+  const textContent = subjectEl.textContent + '\n\n' + el.textContent;
+  const htmlContent = subjectEl.textContent + '<br><br>' + el.innerHTML;
+  try {
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([htmlContent], {type: 'text/html'}),
+      'text/plain': new Blob([textContent], {type: 'text/plain'})
+    })]).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  } catch(e) {
+    navigator.clipboard.writeText(textContent).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
 }
 
 function copyAllEmails(idx) {
   const acct = document.getElementById('acct-' + idx);
   const bodies = acct.querySelectorAll('.persona-body');
-  let all = '';
+  let allText = '', allHtml = '';
   bodies.forEach(b => {
     const subj = b.querySelector('.email-subject').textContent;
-    const body = b.querySelector('.email-body').textContent;
+    const bodyText = b.querySelector('.email-body').textContent;
+    const bodyHtml = b.querySelector('.email-body').innerHTML;
     const label = b.closest('.persona').querySelector('.p-label').textContent;
-    all += `--- ${label.toUpperCase()} ---\n${subj}\n\n${body}\n\n\n`;
+    allText += `--- ${label.toUpperCase()} ---\n${subj}\n\n${bodyText}\n\n\n`;
+    allHtml += `<b>--- ${label.toUpperCase()} ---</b><br>${subj}<br><br>${bodyHtml}<br><br><br>`;
   });
   const btn = acct.querySelector('.copy-all-btn');
-  navigator.clipboard.writeText(all.trim()).then(() => {
-    btn.textContent = 'Copied All!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'Copy All 3 Emails'; btn.classList.remove('copied'); }, 1500);
-  });
+  try {
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([allHtml.trim()], {type: 'text/html'}),
+      'text/plain': new Blob([allText.trim()], {type: 'text/plain'})
+    })]).then(() => {
+      btn.textContent = 'Copied All!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy All 3 Emails'; btn.classList.remove('copied'); }, 1500);
+    });
+  } catch(e) {
+    navigator.clipboard.writeText(allText.trim()).then(() => {
+      btn.textContent = 'Copied All!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy All 3 Emails'; btn.classList.remove('copied'); }, 1500);
+    });
+  }
 }
 
 // ─── Init ───
