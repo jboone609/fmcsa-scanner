@@ -110,7 +110,7 @@ body{background:#0f1117;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-seri
 .persona-body{display:none;padding:14px;border-top:1px solid #1e2233}
 .persona.p-expanded .persona-body{display:block}
 .email-subject{font-size:13px;color:#fff;font-weight:600;margin-bottom:10px}
-.email-body{font-size:12px;line-height:1.7;color:#c8d0e0;white-space:pre-wrap}
+.email-body{font-size:12px;line-height:1.7;color:#c8d0e0}
 .attach-note{background:#7f1d1d22;border:1px solid #7f1d1d;border-radius:6px;padding:6px 10px;margin-top:10px;font-size:10px;color:#fca5a5}
 .screenshot-guide{background:#1e223366;border:1px solid #2a2f42;border-radius:6px;padding:8px 12px;margin:10px 20px;font-size:11px;color:#8892a8;white-space:pre-line;line-height:1.5}
 
@@ -453,6 +453,15 @@ function saferCard(c) {
   </div>`;
 }
 
+function toHtml(s) {
+  s = s.replace(/^Hi \{\{first_name\}\},\n\n/, '');
+  s = s.replace(/\n\nBest,\nJeff Boone\nEnterprise Account Executive \| Foley$/, '');
+  s = s.replace(/   \u2022/g, '&nbsp;&nbsp;&nbsp;\u2022');
+  s = s.replace(/  /g, '&nbsp; ');
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
 function personaCard(type, label, colorCls, subject, body, idx, isSafety) {
   const id = `p-${idx}-${type}`;
   const fullEmail = `Subject: ${subject}\n\n${body}`;
@@ -466,7 +475,7 @@ function personaCard(type, label, colorCls, subject, body, idx, isSafety) {
     </div>
     <div class="persona-body">
       <div class="email-subject">Subject: ${esc(subject)}</div>
-      <div class="email-body" id="${id}-body">${body}</div>
+      <div class="email-body" id="${id}-body">${toHtml(body)}</div>
     </div>
   </div>`;
 }
@@ -577,7 +586,7 @@ function copyEmail(btn, bodyId) {
   const el = document.getElementById(bodyId);
   const persona = el.closest('.persona');
   const subjectEl = persona.querySelector('.email-subject');
-  const textContent = subjectEl.textContent + '\n\n' + el.textContent;
+  const textContent = subjectEl.textContent + '\n\n' + el.innerText;
   const htmlContent = subjectEl.textContent + '<br><br>' + el.innerHTML;
   try {
     navigator.clipboard.write([new ClipboardItem({
@@ -603,7 +612,7 @@ function copyAllEmails(idx) {
   let allText = '', allHtml = '';
   bodies.forEach(b => {
     const subj = b.querySelector('.email-subject').textContent;
-    const bodyText = b.querySelector('.email-body').textContent;
+    const bodyText = b.querySelector('.email-body').innerText;
     const bodyHtml = b.querySelector('.email-body').innerHTML;
     const label = b.closest('.persona').querySelector('.p-label').textContent;
     allText += `--- ${label.toUpperCase()} ---\n${subj}\n\n${bodyText}\n\n\n`;
