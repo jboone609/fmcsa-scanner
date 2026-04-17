@@ -26,6 +26,19 @@ body{background:#f5f6f8;color:#1e1e2e;font-family:'Segoe UI',system-ui,sans-seri
 .filter-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
 .count-badge{background:#f3f4f6;color:#6b7280;padding:5px 12px;border-radius:4px;font-size:12px;margin-left:auto}
 
+.f-group{position:relative;display:inline-block}
+.f-btn{background:#fff;border:1px solid #d1d5db;color:#6b7280;padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap;user-select:none;transition:all .15s}
+.f-btn:hover{border-color:#3b82f6;color:#2563eb}
+.f-btn .cnt{background:#2563eb;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px}
+.f-panel{position:absolute;top:100%;left:0;margin-top:4px;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:6px 0;max-height:320px;overflow-y:auto;z-index:200;display:none;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.f-panel.open{display:block}
+.f-panel .f-ctrl{display:flex;gap:4px;padding:4px 10px 6px;border-bottom:1px solid #e5e7eb;margin-bottom:4px}
+.f-panel .f-ctrl button{background:#f3f4f6;border:1px solid #d1d5db;color:#6b7280;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer}
+.f-panel .f-ctrl button:hover{color:#111827}
+.f-panel label{display:block;padding:4px 12px;font-size:12px;cursor:pointer;color:#374151}
+.f-panel label:hover{background:#f3f4f6}
+.f-panel input[type=checkbox]{margin-right:6px}
+
 .cards{padding:12px 30px 30px;display:flex;flex-direction:column;gap:16px;max-width:1000px}
 
 .card{background:#fff;border:1px solid #e2e5eb;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
@@ -218,6 +231,7 @@ This page is <b>regenerated on demand</b> from the latest scanner data.<br><br>
 <button class="filter-btn" data-filter="conditional">Conditional</button>
 <button class="filter-btn" data-filter="inactive">Inactive / Dead</button>
 <button class="filter-btn" data-filter="active-only">Active Only</button>
+<div class="f-group" data-filter="classification"><div class="f-btn" id="btn-classification">Classification <span class="cnt">All</span></div><div class="f-panel" id="panel-classification"></div></div>
 <span class="count-badge">Showing <span id="count-showing">0</span> of <span id="count-total">0</span></span>
 </div>
 
@@ -750,11 +764,50 @@ var filteredCards = [];
 var currentPage = 1;
 var PAGE_SIZE = 25;
 
+// Classification dropdown filter
+function getClassBucket(cd) {
+  if (!cd) return 'Unknown';
+  cd = cd.toUpperCase();
+  const ah = cd.includes('AUTHORIZED FOR HIRE'), eh = cd.includes('EXEMPT FOR HIRE'),
+        pp = cd.includes('PRIVATE PROPERTY'), gv = cd.includes('GOVERNMENT');
+  if (pp && (ah || eh)) return 'Private + For Hire';
+  if (ah) return 'Authorized For Hire';
+  if (eh) return 'Exempt For Hire';
+  if (pp) return 'Private Property';
+  if (gv) return 'Government';
+  return 'Other';
+}
+const classFilters = {};
+function initDropdownFilter(id, values) {
+  const panel = document.getElementById('panel-' + id);
+  const btn = document.getElementById('btn-' + id);
+  const selected = new Set(values);
+  classFilters[id] = { selected, values };
+  let ctrl = '<div class="f-ctrl"><button onclick="dfAll(\'' + id + '\')">All</button><button onclick="dfNone(\'' + id + '\')">None</button></div>';
+  let checks = values.map(v => '<label><input type="checkbox" checked data-fid="' + id + '" data-val="' + v + '"> ' + v + '</label>').join('');
+  panel.innerHTML = ctrl + checks;
+  panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener('change', e => {
+    const val = e.target.dataset.val;
+    if (e.target.checked) selected.add(val); else selected.delete(val);
+    updateDfBtn(id); applyFilters();
+  }));
+  btn.addEventListener('click', e => { e.stopPropagation(); document.querySelectorAll('.f-panel').forEach(p => { if (p !== panel) p.classList.remove('open') }); panel.classList.toggle('open') });
+  updateDfBtn(id);
+}
+function updateDfBtn(id) {
+  const f = classFilters[id]; const cnt = document.querySelector('#btn-' + id + ' .cnt');
+  cnt.textContent = f.selected.size === f.values.length ? 'All' : f.selected.size;
+}
+function dfAll(id) { const f = classFilters[id]; f.values.forEach(v => f.selected.add(v)); document.querySelectorAll('[data-fid="' + id + '"]').forEach(cb => cb.checked = true); updateDfBtn(id); applyFilters() }
+function dfNone(id) { const f = classFilters[id]; f.selected.clear(); document.querySelectorAll('[data-fid="' + id + '"]').forEach(cb => cb.checked = false); updateDfBtn(id); applyFilters() }
+document.addEventListener('click', e => { if (!e.target.closest('.f-group')) document.querySelectorAll('.f-panel').forEach(p => p.classList.remove('open')) });
+
 function getFiltered() {
   const search = document.getElementById('search-box').value.toLowerCase();
   const filtered = DATA.filter(c => {
     const matchesSearch = !search || c.account_name.toLowerCase().includes(search) || c.dot.toString().includes(search);
     if (!matchesSearch) return false;
+    if (classFilters.classification && !classFilters.classification.selected.has(getClassBucket(c.classdef))) return false;
     if (currentFilter === 'all') return true;
     if (currentFilter === 'above-oos') return c.drv_oos_rate > 6.7;
     if (currentFilter === 'high-risk') return c.risk_score >= 7;
@@ -886,6 +939,7 @@ function init() {
     btn.addEventListener('click', () => setFilter(btn.dataset.filter));
   });
   document.getElementById('search-box').addEventListener('input', applyFilters);
+  initDropdownFilter('classification', ['Private Property','Authorized For Hire','Private + For Hire','Exempt For Hire','Government','Other','Unknown']);
   setFilter('all');
 }
 
