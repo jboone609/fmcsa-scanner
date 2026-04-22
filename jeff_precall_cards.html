@@ -180,6 +180,17 @@ details[open] .expand-icon{transform:rotate(90deg)}
 .pg-btn:disabled{opacity:.4;cursor:default;background:#f3f4f6;color:#9ca3af}
 .pg-info{font-size:12px;color:#6b7280}
 
+
+.meeting-offer{background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1px solid #86efac;border-left:4px solid #059669;border-radius:8px;margin:12px 20px 14px;padding:14px 18px}
+.mo-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.mo-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:#059669;padding:3px 8px;border-radius:20px}
+.mo-strategy{font-size:11px;font-weight:600;color:#065f46;text-transform:uppercase;letter-spacing:.04em}
+.mo-mode{font-size:9px;color:#059669;background:#d1fae5;padding:2px 7px;border-radius:10px;margin-left:auto;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.mo-script{font-size:12px;color:#064e3b;line-height:1.7;font-style:italic;white-space:pre-wrap}
+.mo-script b{font-style:normal;color:#022c22;font-weight:600}
+.mo-stakes{margin-top:8px;padding-top:8px;border-top:1px dashed #86efac;font-size:11px;color:#065f46}
+.mo-stakes b{color:#022c22}
+
 @media(max-width:768px){
 .three-col{grid-template-columns:1fr}
 .three-col .sec{border-right:none;border-bottom:1px solid #e2e5eb}
@@ -397,6 +408,85 @@ function operatingAuthority(classdef, priorRevoke) {
   if (c.includes('PRIVATE PROPERTY')) return {text:'Private Property', cls:''};
   if (c.includes('EXEMPT')) return {text:'Exempt', cls:''};
   return {text: classdef, cls:''};
+}
+
+
+function genMeetingOffer(c) {
+  // Auto-switch: Roadcheck-anchored through May 12, 2026; evergreen May 13+
+  const ROADCHECK_CUTOFF = new Date('2026-05-13T00:00:00');
+  const useRoadcheck = new Date() < ROADCHECK_CUTOFF;
+  const mode = useRoadcheck ? 'Roadcheck Mode' : 'Evergreen';
+
+  const n = c.account_name || c.legal_name || 'this carrier';
+  const d = c.drivers || 0;
+  const oos = c.drv_oos_rate || 0;
+  const drvMult = c.drv_mult || 0;
+  const vehMult = c.veh_mult || 0;
+  const ct = c.crash_total || 0;
+  const fat = c.fatal || 0;
+  const sr = c.safety_rating || 'None';
+  const ind = (c.industry || 'fleet').toLowerCase();
+  const oosOrders = c.oos_order_count || 0;
+
+  // Strategy selection by carrier profile (priority order)
+  let strategy, script, why;
+
+  if (sr === 'Conditional' || sr === 'Unsatisfactory') {
+    // STRATEGY: HOMEWORK REVEAL
+    strategy = 'Homework Reveal';
+    const oosLine = oos > 0 && drvMult < 1
+      ? `your driver OOS rate of ${oos.toFixed(1)}% is actually below the national average`
+      : `the inspection numbers tell a clear story`;
+    script = useRoadcheck
+      ? `"Quick observation on ${n}: you're carrying a ${sr} safety rating, but ${oosLine}. That tells me the finding came from documentation gaps, not roadside performance.\n\nWith Roadcheck May 12-14, ${sr} carriers historically draw extra scrutiny. <b>I've helped 4 fleets in your situation get back to Satisfactory inside 90 days. 15 minutes to share what worked - the specific files and processes that move FMCSA off the rating.</b>\n\nWorth a look this week?"`
+      : `"Quick observation on ${n}: you're carrying a ${sr} safety rating, but ${oosLine}. That tells me the finding came from documentation gaps, not roadside performance.\n\n<b>I've helped 4 fleets in your situation get back to Satisfactory inside 90 days. 15 minutes to share what worked - the specific files and processes that move FMCSA off the rating.</b>\n\nWorth a look this week?"`;
+    why = `${sr} rating is the highest-stakes finding on file. Prospect knows it's expensive and limits operations. A "here's the proven path back" pitch creates immediate interest.`;
+
+  } else if (drvMult >= 1.5 && ct >= 5) {
+    // STRATEGY: TOP 3 THINGS THEY'LL PULL
+    strategy = 'Top 3 They\'ll Pull';
+    const violationGuesses = [];
+    if (drvMult >= 1.5) violationGuesses.push('Hours of Service / log violations');
+    if (vehMult >= 1.5) violationGuesses.push('vehicle maintenance defects');
+    if (oosOrders > 0) violationGuesses.push('outstanding OOS order conditions');
+    if (ct >= 10) violationGuesses.push('post-crash inspection findings');
+    while (violationGuesses.length < 3) violationGuesses.push('driver qualification file gaps');
+    const top3 = violationGuesses.slice(0, 3).map((v, i) => `   ${i+1}. ${v}`).join('\n');
+    script = useRoadcheck
+      ? `"Based on ${n}'s inspection history, here are the three things CVSA inspectors are most likely to flag during Roadcheck May 12-14:\n\n${top3}\n\n<b>15 minutes to walk through how to harden each before May 12. I'll send the prep checklist after the call regardless of whether you become a Foley customer.</b>\n\nDoes Tuesday or Thursday work better?"`
+      : `"Based on ${n}'s inspection history, here are the three things FMCSA inspectors are most likely to flag in your next encounter:\n\n${top3}\n\n<b>15 minutes to walk through how to harden each one. I'll send the prep checklist after the call regardless of whether you become a Foley customer.</b>\n\nDoes Tuesday or Thursday work better?"`;
+    why = `Specific predictions create curiosity ("will he be right?"). The "checklist regardless" line removes sales pressure - free deliverable either way.`;
+
+  } else if (d >= 1000) {
+    // STRATEGY: PERSONALIZED RISK BRIEF
+    strategy = 'Personalized Risk Brief';
+    const headline = drvMult > 0
+      ? `your driver OOS is ${oos.toFixed(1)}% (${(drvMult).toFixed(2)}x national)`
+      : (sr === 'Conditional' ? `you're carrying a Conditional rating` : `you've had ${ct} crashes in 24 months`);
+    script = useRoadcheck
+      ? `"I pulled ${n}'s FMCSA inspection history and built a 1-page Roadcheck risk profile. Top finding: ${headline}.\n\nInspectors will be looking at exactly that pattern May 12-14. <b>I'll walk you through the rest of the brief in 15 minutes - what to expect, where you're most exposed, and what other ${ind} fleets your size are doing this week to prep.</b>\n\nWhen this week works for a quick walkthrough?"`
+      : `"I pulled ${n}'s FMCSA inspection history and built a 1-page risk profile. Top finding: ${headline}.\n\n<b>I'll walk you through the rest of the brief in 15 minutes - what's actually moving your CSA scores, where you're most exposed, and what other ${ind} fleets your size are doing about it.</b>\n\nWhen this week works for a quick walkthrough?"`;
+    why = `Large fleets get hit with generic vendor pitches constantly. A specific data point + "I built it for you" cuts through. The brief feels like a free deliverable, not a sales pitch.`;
+
+  } else if (oos > 0 && oos <= NATL_DRV_OOS && (c.drv_insp || 0) >= 5) {
+    // STRATEGY: PEER BENCHMARK
+    strategy = 'Peer Benchmark';
+    script = useRoadcheck
+      ? `"I have inspection data on the largest ${ind} fleets in your state - driver OOS, vehicle OOS, crash rates, BASICs scores, the whole picture. Your ${oos.toFixed(1)}% driver OOS puts ${n} in the top quartile.\n\n<b>15 minutes to walk through where the rest of your peers are exposed and what the top quartile is doing differently. Useful prep before Roadcheck May 12-14.</b>\n\nDoes Wednesday or Friday work?"`
+      : `"I have inspection data on the largest ${ind} fleets in your state - driver OOS, vehicle OOS, crash rates, BASICs scores. Your ${oos.toFixed(1)}% driver OOS puts ${n} in the top quartile.\n\n<b>15 minutes to walk through where the rest of your peers are exposed and what the top quartile is doing differently to stay there.</b>\n\nDoes Wednesday or Friday work?"`;
+    why = `Operations leaders cannot resist competitive benchmarking. Even strong performers want to confirm their rank and learn what peers do.`;
+
+  } else {
+    // STRATEGY: MONEY NUMBER (default fallback - Finance/CFO angle)
+    strategy = 'Money Number';
+    const fleetTier = d >= 500 ? '$50-150K' : d >= 250 ? '$30-80K' : '$15-50K';
+    script = useRoadcheck
+      ? `"Insurance carriers are pulling CSA data more aggressively at renewal. Based on ${n}'s current BASICs scores, fleets in your range typically see <b>${fleetTier} in premium impact at next renewal cycle</b> - and whatever happens during Roadcheck May 12-14 will land in your next CSA report.\n\n<b>15 minutes to walk through which BASICs scores are driving that math, and what's reversible inside 6 months.</b>\n\nWho on your team handles insurance renewals - worth looping them in?"`
+      : `"Insurance carriers are pulling CSA data more aggressively at renewal. Based on ${n}'s current BASICs scores, fleets in your range typically see <b>${fleetTier} in premium impact at next renewal cycle</b>.\n\n<b>15 minutes to walk through which BASICs scores are driving that math, and what's reversible inside 6 months.</b>\n\nWho on your team handles insurance renewals - worth looping them in?"`;
+    why = `Money numbers unlock budget conversations. Even if the prospect doesn't care about safety, someone in their org cares about insurance premiums. Loops in additional stakeholders organically.`;
+  }
+
+  return { strategy, script, why, mode };
 }
 
 function genHooks(c) {
@@ -740,6 +830,18 @@ function renderCard(c, idx) {
         <div class="hook-script">${hooks.techstack.hook}</div>
       </div>
     </div>
+  </div>
+
+  <div class="meeting-offer">
+    ${(() => { const mo = genMeetingOffer(c); return `
+    <div class="mo-header">
+      <span class="mo-tag">Meeting Offer</span>
+      <span class="mo-strategy">${mo.strategy}</span>
+      <span class="mo-mode">${mo.mode}</span>
+    </div>
+    <div class="mo-script">${mo.script}</div>
+    <div class="mo-stakes"><b>Why they take it:</b> ${mo.why}</div>
+    `; })()}
   </div>
 
   <details class="collapsible" data-lazy="cases" data-dot="${c.dot}">
