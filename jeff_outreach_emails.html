@@ -164,7 +164,7 @@ This page is <b>regenerated on demand</b> using the latest scanner data.<br><br>
 
 <div class="header">
 <h1>Outreach Emails <span style="font-size:12px;color:#f59e0b;font-weight:400;">Scanner-Powered</span></h1>
-<div class="sub" id="header-sub">Roadcheck-anchored Safety sequence (May 12-14 deadline) - 370 accounts</div>
+<div class="sub" id="header-sub">Safety sequence: Roadcheck-anchored through May 12 · auto-swaps to evergreen May 13+ · 370 accounts</div>
 </div>
 
 <div class="stats" id="stats-bar"></div>
@@ -264,8 +264,14 @@ function laborRange(d) {
 
 // ─── Email Generators ───
 function genSafety(c) {
-  // V3 + Roadcheck Email 1 - meeting-driven CTAs anchored to May 12-14 deadline
-  // Variant priority: Conditional FIRST, then OOS rate
+  // Auto-switch: Roadcheck variants until May 13, 2026; evergreen variants after
+  const ROADCHECK_CUTOFF = new Date('2026-05-13T00:00:00');
+  const useRoadcheck = new Date() < ROADCHECK_CUTOFF;
+  return useRoadcheck ? genSafetyRoadcheck(c) : genSafetyEvergreen(c);
+}
+
+function genSafetyRoadcheck(c) {
+  // Roadcheck-anchored Email 1 - meeting CTAs anchored to May 12-14 deadline
   const n = c.account_name, d = c.drivers || 0, oos = c.drv_oos_rate, voos = c.veh_oos_rate || 0;
   const sr = c.safety_rating || 'None', ind = c.industry, v = vertLabel(ind);
   const pu = c.power_units || 0, ct = c.crash_total || 0, fat = c.fatal || 0, inj = c.injury || 0;
@@ -274,10 +280,8 @@ function genSafety(c) {
   const aboveAvgOos = oos && oos > NATL_DRV_OOS;
   const sig = '\n\nBest,\nJeff Boone\nFoley Carrier Services';
 
-  // ===== Variant C1/C2: Conditional Safety Rating (checked FIRST) =====
   if (sr === 'Conditional') {
     if (!aboveAvgOos) {
-      // C1: Conditional + Below-Avg OOS
       const oosLine = (oos && oos > 0)
         ? `but your driver out-of-service rate of <b>${oos.toFixed(1)}%</b> is actually below the national average`
         : `but your driver out-of-service performance is not flagged as elevated`;
@@ -286,7 +290,6 @@ function genSafety(c) {
         body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile. Your fleet is carrying a <b>Conditional safety rating</b>, ${oosLine}.\n\nThat combination usually means the Conditional finding came from documentation gaps -- DQ files, testing programs, recordkeeping -- not roadside performance. With <b>International Roadcheck running May 12-14</b>, Conditional carriers historically draw extra scrutiny, and those same documentation gaps are exactly what gets pulled.\n\n<b>Worth 15 minutes this week or next to walk through what a fast remediation looks like before Roadcheck?</b>\n\n[My Calendar]\n\nIf not, I'll send what we're seeing on Conditional rating remediation.${sig}`
       };
     } else {
-      // C2: Conditional + Above-Avg OOS
       return {
         subject: `${n} -- Conditional rating + elevated OOS`,
         body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA data. Two things stood out: a <b>Conditional safety rating</b> and a driver OOS rate of <b>${oos.toFixed(1)}%</b>, which is <b><u>${drvPct}% above</u></b> the ${NATL_DRV_OOS}% national average.\n\nThat's a compounding risk profile. The Conditional rating means FMCSA already flagged gaps in a review, and an elevated OOS rate means those gaps are still showing up at the roadside. <b>With International Roadcheck three weeks out (May 12-14)</b>, this profile draws the heaviest inspection volume.\n\n<b>Worth 15 minutes this week or next to map out a remediation timeline before Roadcheck?</b>\n\n[My Calendar]\n\nIf now's not the right time, I'll send what we're seeing on the new SMS methodology.${sig}`
@@ -294,7 +297,6 @@ function genSafety(c) {
     }
   }
 
-  // ===== Variant A: Above-Average OOS Rate =====
   if (aboveAvgOos) {
     let bullets = [];
     bullets.push(`<b>Driver OOS rate of ${oos.toFixed(1)}%</b>, which is <b><u>${drvPct}% higher than the ${NATL_DRV_OOS}% national average</u></b>`);
@@ -312,7 +314,6 @@ function genSafety(c) {
     };
   }
 
-  // ===== Variant B: Below-Average OOS Rate (with real data) =====
   if (oos && oos > 0 && di >= 5) {
     return {
       subject: `${n} -- protecting your record through Roadcheck`,
@@ -320,10 +321,66 @@ function genSafety(c) {
     };
   }
 
-  // ===== Variant D: No OOS Data / Generic =====
   return {
     subject: `${n} -- Roadcheck prep`,
     body: `Hi {{first_name}},\n\n<b>International Roadcheck runs May 12-14</b> -- CVSA's 72-hour enforcement blitz across North America. With ${d} drivers in ${v}, you'll likely see meaningfully elevated inspection volume that week.\n\nThe 2026 focus areas:\n   \u2022 <b>Driver:</b> ELD tampering, falsification, manipulation\n   \u2022 <b>Vehicle:</b> cargo securement\n\nThe fleets that come through Roadcheck cleanly typically have driver compliance handled in one system -- DQ files, MVR monitoring, drug and alcohol testing, Clearinghouse queries -- rather than spread across spreadsheets and shared drives.\n\n<b>Worth 15 minutes this week or next to walk through what we're seeing across fleets your size?</b>\n\n[My Calendar]\n\nIf timing isn't right, I'll send the Roadcheck focus breakdown.${sig}`
+  };
+}
+
+function genSafetyEvergreen(c) {
+  // Evergreen Email 1 - meeting CTAs without Roadcheck reference (auto-active May 13+)
+  const n = c.account_name, d = c.drivers || 0, oos = c.drv_oos_rate, voos = c.veh_oos_rate || 0;
+  const sr = c.safety_rating || 'None', ind = c.industry, v = vertLabel(ind);
+  const pu = c.power_units || 0, ct = c.crash_total || 0, fat = c.fatal || 0, inj = c.injury || 0;
+  const di = c.drv_insp || 0;
+  const drvPct = oos > NATL_DRV_OOS ? Math.round(((oos - NATL_DRV_OOS) / NATL_DRV_OOS) * 100) : 0;
+  const aboveAvgOos = oos && oos > NATL_DRV_OOS;
+  const sig = '\n\nBest,\nJeff Boone\nFoley Carrier Services';
+
+  if (sr === 'Conditional') {
+    if (!aboveAvgOos) {
+      const oosLine = (oos && oos > 0)
+        ? `but your driver out-of-service rate of <b>${oos.toFixed(1)}%</b> is actually below the national average`
+        : `but your driver out-of-service performance is not flagged as elevated`;
+      return {
+        subject: `${n} -- Conditional safety rating`,
+        body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile. Your fleet is carrying a <b>Conditional safety rating</b>, ${oosLine}.\n\nThat combination usually means the Conditional finding came from documentation gaps -- DQ files, testing programs, recordkeeping -- not roadside performance. With ${d} drivers across ${v}, that's a lot of files to keep audit-ready.\n\n<b>Worth 15 minutes this week or next to walk through what a fast remediation looks like?</b>\n\n[My Calendar]\n\nIf not, I'll send what we're seeing on Conditional rating remediation.${sig}`
+      };
+    } else {
+      return {
+        subject: `${n} -- Conditional rating + elevated OOS`,
+        body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA data. Two things stood out: a <b>Conditional safety rating</b> and a driver OOS rate of <b>${oos.toFixed(1)}%</b>, which is <b><u>${drvPct}% above</u></b> the ${NATL_DRV_OOS}% national average.\n\nThat's a compounding risk profile. The Conditional rating means FMCSA already flagged gaps in a review, and an elevated OOS rate means those gaps are still showing up at the roadside. That combination is what triggers the next level of enforcement.\n\n<b>Worth 15 minutes this week or next to map out a remediation timeline?</b>\n\n[My Calendar]\n\nIf now's not the right time, I'll send what we're seeing on the new SMS methodology.${sig}`
+      };
+    }
+  }
+
+  if (aboveAvgOos) {
+    let bullets = [];
+    bullets.push(`<b>Driver OOS rate of ${oos.toFixed(1)}%</b>, which is <b><u>${drvPct}% higher than the ${NATL_DRV_OOS}% national average</u></b>`);
+    if (ct > 0) {
+      let cp = [];
+      if (fat > 0) cp.push(`${fat} fatal`);
+      if (inj > 0) cp.push(`${inj} with injuries`);
+      bullets.push(`<b>${ct} crashes in the last 24 months</b>` + (cp.length ? `, including ${cp.join(' and ')}` : ''));
+    }
+    bullets.push(`${d} drivers and ${pu} power units`);
+    let bStr = bullets.map(b => '   \u2022 ' + b).join('\n');
+    return {
+      subject: `${n} -- driver out-of-service rate`,
+      body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA data and a couple numbers stood out:\n\n${bStr}\n\nThat kind of gap usually traces back to expired medical cards, lapsed Clearinghouse queries, or incomplete driver qualification files.\n\nI work with safety teams at fleets your size to identify and close these gaps before they show up in audits, insurance renewals, or roadside enforcement. <b>Worth 15 minutes this week or next to walk through what we're seeing across similar operations?</b>\n\n[My Calendar]\n\nIf timing isn't right, I'll send the breakdown of where fleets typically get flagged during audits.${sig}`
+    };
+  }
+
+  if (oos && oos > 0 && di >= 5) {
+    return {
+      subject: `${n} -- protecting a strong safety record`,
+      body: `Hi {{first_name}},\n\nI was reviewing ${n}'s FMCSA profile. Your driver OOS rate of <b>${oos.toFixed(1)}%</b> is well below the ${NATL_DRV_OOS}% national average -- your team has clearly built a strong compliance program across ${d} drivers in ${v}.\n\nThe fleets I talk to that stay consistently low usually have a way to catch MVR changes between annual pulls rather than waiting 12 months and hoping nothing slipped through.\n\n<b>Worth 15 minutes this week or next to compare notes on how peer fleets are protecting strong records like yours?</b>\n\n[My Calendar]\n\nIf timing's tight, I'll send what we're seeing on continuous monitoring.${sig}`
+    };
+  }
+
+  return {
+    subject: `${n} -- driver compliance at scale`,
+    body: `Hi {{first_name}},\n\nManaging driver compliance across ${d} drivers in ${v} operations is a real lift. DQ files, MVR monitoring, drug and alcohol testing, Clearinghouse queries -- all of it has to stay current to avoid audit findings.\n\nWith offsite audits up 400% since 2019, fleets now have just 48 hours to produce complete driver files digitally when flagged.\n\n<b>Worth 15 minutes this week or next to walk through what we're seeing across fleets your size?</b>\n\n[My Calendar]\n\nIf timing isn't right, I'll send the most thorough DQ file checklist I've found.${sig}`
   };
 }
 
