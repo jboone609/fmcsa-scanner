@@ -468,7 +468,7 @@ function genMeetingOffer(c) {
       : `"I pulled ${n}'s FMCSA inspection history and built a 1-page risk profile. Top finding: ${headline}.\n\n<b>I'll walk you through the rest of the brief in 15 minutes - what's actually moving your CSA scores, where you're most exposed, and what other ${ind} fleets your size are doing about it.</b>\n\nWhen this week works for a quick walkthrough?"`;
     why = `Large fleets get hit with generic vendor pitches constantly. A specific data point + "I built it for you" cuts through. The brief feels like a free deliverable, not a sales pitch.`;
 
-  } else if (oos > 0 && oos <= NATL_DRV_OOS && (c.drv_insp || 0) >= 5) {
+  } else if (oos > 0 && oos <= 6.67 && (c.drv_insp || 0) >= 5) {
     // STRATEGY: PEER BENCHMARK
     strategy = 'Peer Benchmark';
     script = useRoadcheck
