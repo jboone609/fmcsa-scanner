@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intent Signals - Foley.io Scanner</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;font-size:13px}
+.header{background:linear-gradient(135deg,#1a1d2e,#252a3a);padding:20px 30px;border-bottom:1px solid #2a2f42}
+.header h1{font-size:22px;font-weight:600;color:#fff}
+.header .sub{color:#8892a8;font-size:12px;margin-top:4px}
+.stats{display:flex;gap:12px;padding:16px 30px;flex-wrap:wrap}
+.sc{background:#1a1d2e;border:1px solid #2a2f42;border-radius:8px;padding:12px 18px;min-width:140px}
+.sc .lb{color:#8892a8;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.sc .vl{font-size:22px;font-weight:700;color:#fff;margin-top:2px}
+.sc .vl.t1{color:#ef4444}.sc .vl.t2{color:#f59e0b}.sc .vl.t3{color:#3b82f6}.sc .vl.g{color:#34d399}
+.controls{display:flex;gap:8px;padding:12px 30px;flex-wrap:wrap;align-items:center}
+.search-box{background:#1a1d2e;border:1px solid #2a2f42;color:#e0e0e0;padding:7px 12px;border-radius:6px;font-size:12px;width:260px}
+.filter-btn{background:#1a1d2e;border:1px solid #2a2f42;color:#e0e0e0;padding:7px 12px;border-radius:6px;font-size:12px;cursor:pointer}
+.filter-btn:hover{border-color:#4a5568}
+.filter-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.count-badge{background:#1e2233;color:#8892a8;padding:5px 12px;border-radius:4px;font-size:12px;margin-left:auto}
+.cards{padding:8px 30px 30px;display:flex;flex-direction:column;gap:10px}
+.intent-card{background:#1a1d2e;border:1px solid #2a2f42;border-radius:10px;overflow:hidden}
+.intent-card.t1{border-left:4px solid #ef4444}
+.intent-card.t2{border-left:4px solid #f59e0b}
+.intent-card.t3{border-left:4px solid #3b82f6}
+.card-row{display:flex;align-items:center;padding:14px 18px;gap:14px;flex-wrap:wrap}
+.tier-pill{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 10px;border-radius:20px;color:#fff}
+.tier-pill.t1{background:#7f1d1d;color:#fca5a5}
+.tier-pill.t2{background:#78350f;color:#fbbf24}
+.tier-pill.t3{background:#1e3a5f;color:#60a5fa}
+.acct-info{flex:1;min-width:200px}
+.acct-name{font-size:14px;font-weight:600;color:#fff}
+.acct-name a{color:#60a5fa;text-decoration:none}
+.acct-name a:hover{text-decoration:underline}
+.acct-meta{font-size:11px;color:#8892a8;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.acct-meta .meta-tag{background:#13151f;padding:2px 7px;border-radius:3px}
+.score-block{text-align:right;min-width:80px}
+.score-num{font-size:24px;font-weight:700;color:#fff}
+.score-lbl{font-size:9px;color:#8892a8;text-transform:uppercase;letter-spacing:.5px}
+.topics-row{padding:8px 18px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.topic-pill{font-size:10px;font-weight:600;padding:4px 9px;border-radius:14px;color:#fff}
+.signals-detail{padding:0 18px 14px;border-top:1px solid #2a2f42;margin-top:6px;display:none}
+.intent-card.expanded .signals-detail{display:block}
+.signals-detail h4{font-size:10px;color:#8892a8;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px;font-weight:600}
+.sig-line{font-size:11px;color:#c9d1d9;padding:6px 8px;background:#13151f;border-radius:4px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sig-line .sig-meta{display:flex;gap:10px;align-items:center}
+.sig-line .sig-locs{color:#8892a8;font-size:10px;flex:1;min-width:200px}
+.sig-line .sig-score{font-weight:700;color:#fff}
+.sig-line .sig-aud{color:#fbbf24;font-weight:600;font-size:10px;background:#78350f;padding:1px 6px;border-radius:8px}
+.toggle-btn{background:#252a3a;border:1px solid #2a2f42;color:#8892a8;padding:5px 10px;border-radius:5px;font-size:10px;cursor:pointer;margin-left:8px}
+.toggle-btn:hover{color:#fff}
+.note-bar{background:#13151f;padding:8px 30px;border-bottom:1px solid #2a2f42;color:#8892a8;font-size:11px}
+.note-bar b{color:#fbbf24}
+</style>
+</head>
+<body>
+<div style="background:#13151f;padding:6px 30px;display:flex;gap:18px;border-bottom:1px solid #2a2f42;font-size:12px">
+<a href="index.html" style="color:#4ade80;text-decoration:none">Scanner</a>
+<a href="jeff_target_accounts.html" style="color:#c084fc;text-decoration:none">Pick-Up Targets</a>
+<a href="jeff_drop_candidates.html" style="color:#ef4444;text-decoration:none">Drop Candidates</a>
+<a href="jeff_hit_list.html" style="color:#fbbf24;text-decoration:none">Jeff's Hit List</a>
+<a href="jeff_outreach_emails.html" style="color:#f59e0b;text-decoration:none">Outreach Emails</a>
+<a href="jeff_precall_cards.html" style="color:#60a5fa;text-decoration:none">Pre-Call Cards</a>
+<span style="color:#34d399;font-weight:600">Intent Signals</span>
+</div>
+<div class="header">
+<h1>Intent Signals <span style="font-size:12px;color:#34d399;font-weight:400;">ZoomInfo - Jeff's Book</span></h1>
+<div class="sub">Generated 2026-04-24 15:43 &bull; Last 30 days &bull; 5 topics monitored &bull; 63 accounts enriched (preview - more coming)</div>
+</div>
+<div class="note-bar">
+<b>Preview build:</b> 63 of 411 accounts enriched so far. Backfill in progress for the remaining 348. Top surging topic: Drug & Alcohol Testing (14 accounts active).
+</div>
+<div class="stats">
+<div class="sc"><div class="lb">Active Intent</div><div class="vl g">16</div></div>
+<div class="sc"><div class="lb">Tier 1</div><div class="vl t1">7</div></div>
+<div class="sc"><div class="lb">Tier 2</div><div class="vl t2">5</div></div>
+<div class="sc"><div class="lb">Tier 3</div><div class="vl t3">4</div></div>
+<div class="sc"><div class="lb">Top Topic</div><div class="vl" style="font-size:14px;line-height:1.3">Drug & Alcohol Testing</div></div>
+<div class="sc"><div class="lb">Accounts Enriched</div><div class="vl">63</div></div>
+</div>
+<div class="controls">
+<input type="text" class="search-box" id="search" placeholder="Search account name...">
+<button class="filter-btn active" data-tier="all" onclick="setFilter('all')">All</button>
+<button class="filter-btn" data-tier="1" onclick="setFilter('1')">Tier 1</button>
+<button class="filter-btn" data-tier="2" onclick="setFilter('2')">Tier 2</button>
+<button class="filter-btn" data-tier="3" onclick="setFilter('3')">Tier 3</button>
+<span class="count-badge" id="count-badge">0 accounts</span>
+</div>
+<div class="cards" id="cards"></div>
+
+<script>
+const TOPIC_COLORS = {"Drug & Alcohol Testing": "#f59e0b", "Background Checks": "#a78bfa", "Transportation & Fleet Management": "#60a5fa", "Truck Driver Recruiting & Retention": "#34d399", "Employment Verification": "#fb7185"};
+const RECORDS = [{"name": "Leonard?s Express", "dot": 920222, "account_id": "0011U00000K05H8", "website": "www.leonardsexpress.com", "state": "NY", "drivers": 599, "risk_score": 6, "safety_rating": "None", "industry": "Transportation", "tier": 3, "topic_count": 1, "max_score": 79, "topics": ["Background Checks"], "signals": [{"topic": "Background Checks", "signalScore": 79, "audienceStrength": "B", "signalDate": "2026-04-18", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Fargo", "state": "North Dakota"}]}], "in_book": true}, {"name": "Alabama Power", "dot": 263096, "account_id": "0011U00000K0Chk", "website": "www.alabamapower.com", "state": "AL", "drivers": 1968, "risk_score": 5, "safety_rating": "Satisfactory", "industry": "Energy, Utilities & Waste", "tier": 3, "topic_count": 1, "max_score": 76, "topics": ["Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 76, "audienceStrength": "C", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Birmingham", "state": "Alabama"}, {"city": "Cleveland", "state": "Ohio"}]}], "in_book": true}, {"name": "Asphalt Buyer II Llc.", "dot": 4350289, "account_id": "001Ud00000XX3kN", "website": "atd.com", "state": "NC", "drivers": 1577, "risk_score": 4, "safety_rating": "None", "industry": "", "tier": 3, "topic_count": 1, "max_score": 76, "topics": ["Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 76, "audienceStrength": "C", "signalDate": "2026-03-28", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Charlotte", "state": "North Carolina"}, {"city": "Hampton Roads", "state": "North Carolina"}]}], "in_book": true}, {"name": "BrightView", "dot": 464076, "account_id": "001Ud00000XWn0p", "website": "www.brightview.com", "state": "PA", "drivers": 2042, "risk_score": 5, "safety_rating": "None", "industry": "Consumer Services", "tier": 3, "topic_count": 1, "max_score": 74, "topics": ["Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 74, "audienceStrength": "D", "signalDate": "2026-03-28", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Columbus", "state": "Ohio"}, {"city": "Orlando", "state": "Florida"}]}], "in_book": true}, {"name": "California Department of Transportation", "dot": 2811321, "account_id": "0011U00000K0ANe", "website": "dot.ca.gov", "state": "CA", "drivers": 2346, "risk_score": 6, "safety_rating": "None", "industry": "Government", "tier": 2, "topic_count": 1, "max_score": 99, "topics": ["Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 99, "audienceStrength": "A", "signalDate": "2026-04-04", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Sacramento", "state": "California"}, {"city": "New York", "state": "New Jersey"}, {"city": "San Francisco", "state": "California"}]}], "in_book": true}, {"name": "American Eagle Ready Mix", "dot": 2883615, "account_id": "0011U00000K0947", "website": "www.aermut.com", "state": "UT", "drivers": 180, "risk_score": 0, "safety_rating": "None", "industry": "Manufacturing", "tier": 2, "topic_count": 1, "max_score": 96, "topics": ["Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 96, "audienceStrength": "A", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"state": "Utah"}]}], "in_book": true}, {"name": "Ben E. Keith", "dot": 115479, "account_id": "0011U00000K0Hx1", "website": "www.benekeith.com", "state": "TX", "drivers": 2365, "risk_score": 7, "safety_rating": "Satisfactory", "industry": "Retail", "tier": 2, "topic_count": 1, "max_score": 92, "topics": ["Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 92, "audienceStrength": "C", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Dallas", "state": "Texas"}]}], "in_book": true}, {"name": "Cable ONE", "dot": 1031616, "account_id": "0011U00000K0LNe", "website": "www.cableone.biz", "state": "AZ", "drivers": 347, "risk_score": 5, "safety_rating": "None", "industry": "Telecommunications", "tier": 2, "topic_count": 2, "max_score": 91, "topics": ["Drug & Alcohol Testing", "Employment Verification"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 73, "audienceStrength": "B", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Florence", "state": "South Carolina"}, {"city": "Joplin", "state": "Missouri"}]}, {"topic": "Employment Verification", "signalScore": 91, "audienceStrength": "B", "signalDate": "2026-04-18", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Chicago", "state": "Illinois"}, {"city": "Tulsa", "state": "Oklahoma"}]}], "in_book": true}, {"name": "Adusa Transportation Llc.", "dot": 57029, "account_id": "0011U00000K0G0F", "website": "foodlion.com", "state": "NC", "drivers": 1335, "risk_score": 3, "safety_rating": "None", "industry": "Supermarkets", "tier": 2, "topic_count": 2, "max_score": 90, "topics": ["Employment Verification", "Transportation & Fleet Management"], "signals": [{"topic": "Employment Verification", "signalScore": 80, "audienceStrength": "F", "signalDate": "2026-03-28", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Greenville", "state": "North Carolina"}, {"state": "Florida"}, {"city": "Roanoke", "state": "Virginia"}]}, {"topic": "Transportation & Fleet Management", "signalScore": 90, "audienceStrength": "B", "signalDate": "2026-04-11", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Baltimore", "state": "Maryland"}, {"city": "Greenville", "state": "North Carolina"}, {"city": "Wilmington", "state": "North Carolina"}]}], "in_book": true}, {"name": "Ace Hardware", "dot": 76209, "account_id": "0011U00000K09QL", "website": "acehardware.com", "state": "IL", "drivers": 713, "risk_score": 6, "safety_rating": "None", "industry": "Home Improvement & Hardware Retail", "tier": 1, "topic_count": 3, "max_score": 99, "topics": ["Drug & Alcohol Testing", "Employment Verification", "Transportation & Fleet Management"], "signals": [{"topic": "Employment Verification", "signalScore": 99, "audienceStrength": "F", "signalDate": "2026-04-11", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Colorado Springs", "state": "Colorado"}]}, {"topic": "Drug & Alcohol Testing", "signalScore": 99, "audienceStrength": "B", "signalDate": "2026-04-04", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Reno", "state": "Nevada"}, {"city": "Chattanooga", "state": "Tennessee"}, {"city": "Cincinnati", "state": "Ohio"}]}, {"topic": "Transportation & Fleet Management", "signalScore": 89, "audienceStrength": "A", "signalDate": "2026-04-18", "spikesInDateRange": 1, "topSignalLocations": [{"city": "New York", "state": "New York"}, {"city": "Toledo", "state": "Ohio"}, {"city": "Tri Cities", "state": "Oregon"}]}], "in_book": true}, {"name": "AutoZone", "dot": 288323, "account_id": "0011U00000K094C", "website": "autozone.com", "state": "TN", "drivers": 591, "risk_score": 5, "safety_rating": "None", "industry": "Automotive", "tier": 1, "topic_count": 2, "max_score": 99, "topics": ["Drug & Alcohol Testing", "Transportation & Fleet Management"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 91, "audienceStrength": "A", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Memphis", "state": "Tennessee"}, {"city": "Chicago", "state": "Illinois"}, {"city": "Orlando", "state": "Florida"}]}, {"topic": "Transportation & Fleet Management", "signalScore": 99, "audienceStrength": "A", "signalDate": "2026-04-18", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Baton Rouge", "state": "Louisiana"}, {"city": "Raleigh", "state": "North Carolina"}]}], "in_book": true}, {"name": "Costco Wholesale", "dot": 589006, "account_id": "0011U00000K0F65", "website": "www.costco.com", "state": "WA", "drivers": 2527, "risk_score": 7, "safety_rating": "None", "industry": "Retail", "tier": 1, "topic_count": 4, "max_score": 97, "topics": ["Background Checks", "Drug & Alcohol Testing", "Employment Verification", "Transportation & Fleet Management"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 97, "audienceStrength": "B", "signalDate": "2026-04-04", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Burlington", "state": "New York"}, {"city": "Camano", "state": "Washington"}, {"city": "Fort Myers", "state": "Florida"}]}, {"topic": "Employment Verification", "signalScore": 91, "audienceStrength": "D", "signalDate": "2026-04-18", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Seattle", "state": "Washington"}, {"city": "Dallas", "state": "Texas"}]}, {"topic": "Background Checks", "signalScore": 91, "audienceStrength": "A", "signalDate": "2026-03-28", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Seattle", "state": "Washington"}, {"city": "Boise", "state": "Idaho"}]}, {"topic": "Transportation & Fleet Management", "signalScore": 80, "audienceStrength": "C", "signalDate": "2026-04-18", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Sacramento", "state": "California"}, {"city": "Boise", "state": "Idaho"}]}], "in_book": true}, {"name": "Lowe's Home Improvement", "dot": 97235, "account_id": "0011U00000K03ru", "website": "www.lowes.com", "state": "NC", "drivers": 2207, "risk_score": 10, "safety_rating": "Conditional", "industry": "Retail", "tier": 1, "topic_count": 4, "max_score": 97, "topics": ["Background Checks", "Drug & Alcohol Testing", "Employment Verification", "Transportation & Fleet Management"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 97, "audienceStrength": "C", "signalDate": "2026-04-04", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Charlotte", "state": "North Carolina"}, {"city": "Dallas", "state": "Texas"}, {"city": "Charlotte", "state": "South Carolina"}]}, {"topic": "Transportation & Fleet Management", "signalScore": 91, "audienceStrength": "A", "signalDate": "2026-04-11", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Kansas City", "state": "Missouri"}, {"city": "Wilkes Barre", "state": "Pennsylvania"}, {"city": "Winston Salem", "state": "North Carolina"}]}, {"topic": "Background Checks", "signalScore": 67, "audienceStrength": "C", "signalDate": "2026-04-18", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Alexandria", "state": "Louisiana"}, {"city": "Medford", "state": "California"}]}, {"topic": "Employment Verification", "signalScore": 67, "audienceStrength": "D", "signalDate": "2026-04-04", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Cleveland", "state": "Ohio"}, {"city": "Dayton", "state": "Ohio"}, {"city": "Hampton Roads", "state": "Virginia"}]}], "in_book": true}, {"name": "Bassett Transit Llc.", "dot": 525370, "account_id": "0011U00000K0zJc", "website": "bassettmechanical.com", "state": "WI", "drivers": 180, "risk_score": 4, "safety_rating": "None", "industry": "Construction", "tier": 1, "topic_count": 2, "max_score": 97, "topics": ["Background Checks", "Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 91, "audienceStrength": "A", "signalDate": "2026-03-28", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Calgary", "state": "Alberta", "country": "Canada"}]}, {"topic": "Background Checks", "signalScore": 97, "audienceStrength": "B", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Green Bay", "state": "Wisconsin"}]}], "in_book": true}, {"name": "Allied Waste Transportation Inc.", "dot": 704220, "account_id": "0011U00000K0BxT", "website": "republicservices.com", "state": "AZ", "drivers": 1059, "risk_score": 6, "safety_rating": "None", "industry": "Energy and Utilities", "tier": 1, "topic_count": 3, "max_score": 91, "topics": ["Drug & Alcohol Testing", "Employment Verification", "Transportation & Fleet Management"], "signals": [{"topic": "Employment Verification", "signalScore": 88, "audienceStrength": "D", "signalDate": "2026-04-18", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Savannah", "state": "Georgia"}]}, {"topic": "Drug & Alcohol Testing", "signalScore": 91, "audienceStrength": "A", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "San Tan Valley", "state": "Arizona"}, {"city": "Dallas", "state": "Texas"}, {"city": "Los Angeles", "state": "California"}]}, {"topic": "Transportation & Fleet Management", "signalScore": 64, "audienceStrength": "C", "signalDate": "2026-04-18", "spikesInDateRange": 2, "topSignalLocations": [{"city": "Boston", "state": "New Hampshire"}, {"city": "Cleveland", "state": "Ohio"}]}], "in_book": true}, {"name": "Ansco & Associates", "dot": 190580, "account_id": "0011U00000K0OLW", "website": "www.anscollc.com", "state": "GA", "drivers": 451, "risk_score": 4, "safety_rating": "None", "industry": "Telecommunications", "tier": 1, "topic_count": 2, "max_score": 82, "topics": ["Background Checks", "Drug & Alcohol Testing"], "signals": [{"topic": "Drug & Alcohol Testing", "signalScore": 82, "audienceStrength": "B", "signalDate": "2026-04-04", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Atlanta", "state": "Georgia"}]}, {"topic": "Background Checks", "signalScore": 81, "audienceStrength": "B", "signalDate": "2026-03-28", "spikesInDateRange": 1, "topSignalLocations": [{"city": "Houston", "state": "Texas"}]}], "in_book": true}];
+let currentFilter = 'all';
+let searchTerm = '';
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function topicPill(t) {
+  const color = TOPIC_COLORS[t] || '#6b7280';
+  return `<span class="topic-pill" style="background:${color}">${esc(t)}</span>`;
+}
+
+function fmtDate(iso) { return iso ? iso.split('T')[0] : ''; }
+
+function locStr(locs) {
+  if (!locs || !locs.length) return '';
+  return locs.slice(0, 3).map(l => `${l.city || ''}${l.city && l.state ? ', ' : ''}${l.state || ''}`).filter(Boolean).join(' &middot; ');
+}
+
+function renderCard(r, idx) {
+  const sfdc = r.account_id ? `https://foley.lightning.force.com/lightning/r/Account/${r.account_id}/view` : '';
+  const safer = r.dot ? `https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${r.dot}` : '';
+  const nameHtml = sfdc ? `<a href="${sfdc}" target="_blank">${esc(r.name)}</a>` : esc(r.name);
+  const meta = [];
+  if (r.dot) meta.push(`<span class="meta-tag">DOT ${r.dot}</span>`);
+  if (r.state) meta.push(`<span class="meta-tag">${esc(r.state)}</span>`);
+  if (r.drivers) meta.push(`<span class="meta-tag">${r.drivers} drv</span>`);
+  if (r.risk_score) meta.push(`<span class="meta-tag">Risk ${r.risk_score}</span>`);
+  if (r.safety_rating && r.safety_rating !== 'None') meta.push(`<span class="meta-tag">${esc(r.safety_rating)}</span>`);
+  if (r.industry) meta.push(`<span class="meta-tag">${esc(r.industry)}</span>`);
+  if (r.website) meta.push(`<a href="https://${r.website.replace(/^https?:\/\//,'').replace(/^www\./,'')}" target="_blank" style="color:#60a5fa;text-decoration:none">${esc(r.website)}</a>`);
+  if (safer) meta.push(`<a href="${safer}" target="_blank" style="color:#60a5fa;text-decoration:none">SAFER</a>`);
+
+  const sigsHtml = r.signals.map(s => `
+    <div class="sig-line">
+      <div class="sig-meta">
+        ${topicPill(s.topic)}
+        <span class="sig-score">${s.signalScore}</span>
+        <span class="sig-aud">Audience ${s.audienceStrength}</span>
+        <span style="color:#8892a8;font-size:10px">${fmtDate(s.signalDate)}</span>
+        ${s.spikesInDateRange > 1 ? `<span style="color:#fbbf24;font-size:10px">${s.spikesInDateRange} spikes</span>` : ''}
+      </div>
+      <div class="sig-locs">${locStr(s.topSignalLocations)}</div>
+    </div>`).join('');
+
+  return `
+  <div class="intent-card t${r.tier}" id="card-${idx}" data-tier="${r.tier}" data-name="${esc(r.name).toLowerCase()}">
+    <div class="card-row" onclick="toggleCard(${idx})" style="cursor:pointer">
+      <span class="tier-pill t${r.tier}">Tier ${r.tier}</span>
+      <div class="acct-info">
+        <div class="acct-name">${nameHtml}</div>
+        <div class="acct-meta">${meta.join('')}</div>
+      </div>
+      <div class="score-block">
+        <div class="score-num">${r.max_score}</div>
+        <div class="score-lbl">Max Score</div>
+      </div>
+      <div class="score-block">
+        <div class="score-num">${r.topic_count}</div>
+        <div class="score-lbl">Topics</div>
+      </div>
+      <button class="toggle-btn" onclick="event.stopPropagation();toggleCard(${idx})">Details</button>
+    </div>
+    <div class="topics-row">${r.topics.map(topicPill).join('')}</div>
+    <div class="signals-detail">
+      <h4>Signal detail</h4>
+      ${sigsHtml}
+    </div>
+  </div>`;
+}
+
+function render() {
+  const container = document.getElementById('cards');
+  const filtered = RECORDS.filter(r => {
+    if (currentFilter !== 'all' && String(r.tier) !== currentFilter) return false;
+    if (searchTerm && !r.name.toLowerCase().includes(searchTerm)) return false;
+    return true;
+  });
+  container.innerHTML = filtered.map((r, i) => renderCard(r, i)).join('');
+  document.getElementById('count-badge').textContent = filtered.length + ' accounts';
+}
+
+function setFilter(t) {
+  currentFilter = t;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.tier === t));
+  render();
+}
+
+function toggleCard(idx) {
+  document.getElementById('card-' + idx).classList.toggle('expanded');
+}
+
+document.getElementById('search').addEventListener('input', e => {
+  searchTerm = e.target.value.toLowerCase();
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
