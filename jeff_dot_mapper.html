@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOT Mapper - Foley.io</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0f1117;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;font-size:13px}
+.header{background:linear-gradient(135deg,#0d4d4d,#0a2e2e);padding:20px 30px;border-bottom:1px solid #164d4d}
+.header h1{font-size:22px;font-weight:600;color:#fff}
+.header .sub{color:#7dd3cc;font-size:12px;margin-top:4px}
+.stats{display:flex;gap:12px;padding:16px 30px;flex-wrap:wrap}
+.sc{background:#1a1d2e;border:1px solid #2a2f42;border-radius:8px;padding:12px 18px;min-width:140px}
+.sc .lb{color:#8892a8;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.sc .vl{font-size:22px;font-weight:700;color:#fff;margin-top:2px}
+.sc .vl.w{color:#f59e0b}.sc .vl.d{color:#ef4444}.sc .vl.i{color:#3b82f6}.sc .vl.g{color:#34d399}.sc .vl.t{color:#14b8a6}
+.filters{display:flex;gap:8px;padding:12px 30px;flex-wrap:wrap;align-items:flex-start}
+.f-btn{background:#1a1d2e;border:1px solid #2a2f42;color:#e0e0e0;padding:7px 12px;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;user-select:none}
+.f-btn:hover{border-color:#14b8a6}.f-btn.active{border-color:#14b8a6;color:#14b8a6}
+.search-box{background:#1a1d2e;border:1px solid #2a2f42;color:#e0e0e0;padding:7px 12px;border-radius:6px;font-size:12px;width:260px}
+.table-wrap{padding:0 30px 30px}
+.acct-card{background:#1a1d2e;border:1px solid #2a2f42;border-radius:10px;margin-bottom:12px;overflow:hidden}
+.acct-header{display:flex;align-items:center;padding:14px 20px;cursor:pointer;gap:16px}
+.acct-header:hover{background:#1e2233}
+.acct-header .arrow{color:#4a5568;font-size:10px;transition:transform .2s}
+.acct-card.expanded .acct-header .arrow{transform:rotate(90deg);color:#14b8a6}
+.acct-header .name{font-weight:600;color:#fff;font-size:14px;flex:1;min-width:0}
+.acct-header .anchor-dot{color:#7dd3cc;font-size:11px;font-family:'Courier New',monospace}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600}
+.b-total{background:#0a2e2e;color:#7dd3cc;border:1px solid #164d4d}
+.b-confirmed{background:#064e3b;color:#34d399}
+.b-likely{background:#78350f;color:#fbbf24}
+.b-unverified{background:#374151;color:#9ca3af}
+.b-other-rep{background:#7f1d1d;color:#fca5a5}
+.b-you-own{background:#1e3a5f;color:#60a5fa}
+.b-net-new{background:#064e3b;color:#34d399}
+.acct-body{display:none;border-top:1px solid #2a2f42;padding:14px 20px}
+.acct-card.expanded .acct-body{display:block}
+.siblings-section{margin-bottom:16px}
+.section-title{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#14b8a6;margin-bottom:6px}
+.sib-row{background:#0f1117;border:1px solid #2a2f42;border-radius:6px;padding:10px 12px;margin-bottom:6px;font-size:12px}
+.sib-row .sr-top{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.sib-row .sr-name{color:#fff;font-weight:600;flex:1;min-width:0}
+.sib-row .sr-meta{color:#8892a8;font-size:11px}
+.sib-row .sr-reason{color:#6b7280;font-size:11px;margin-top:4px;font-style:italic}
+.sib-row .sr-links{display:flex;gap:6px}
+.sib-row a{color:#60a5fa;font-size:10px;text-decoration:none;padding:2px 8px;border:1px solid #60a5fa44;border-radius:10px}
+.sib-row a:hover{background:#1e3a5f}
+.excluded-row{color:#6b7280;font-size:11px;padding:4px 0}
+a.anchor-sfdc{color:#7dd3cc;font-size:10px;padding:2px 8px;border:1px solid #14b8a6;border-radius:10px;text-decoration:none;white-space:nowrap}
+a.anchor-sfdc:hover{background:#0a2e2e}
+.empty{padding:60px 30px;text-align:center;color:#6b7280;font-size:14px}
+.progress-banner{background:#0a2e2e;color:#7dd3cc;padding:10px 30px;border-bottom:1px solid #164d4d;font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<div style="background:#13151f;padding:6px 30px;display:flex;gap:18px;border-bottom:1px solid #2a2f42;font-size:12px">
+<a href="index.html" style="color:#4ade80;text-decoration:none">Scanner</a>
+<a href="jeff_target_accounts.html" style="color:#c084fc;text-decoration:none">Pick-Up Targets</a>
+<a href="jeff_drop_candidates.html" style="color:#ef4444;text-decoration:none">Drop Candidates</a>
+<a href="jeff_hit_list.html" style="color:#fbbf24;text-decoration:none">Jeff's Hit List</a>
+<a href="jeff_outreach_emails.html" style="color:#f59e0b;text-decoration:none">Outreach Emails</a>
+<a href="jeff_precall_cards.html" style="color:#60a5fa;text-decoration:none">Pre-Call Cards</a>
+<span style="color:#14b8a6;font-weight:600">DOT Mapper</span>
+</div>
+<div class="progress-banner">
+Run status: 0/411 accounts processed &middot; Last updated 2026-04-24 11:25
+</div>
+<div class="header">
+<h1>DOT Mapper <span style="font-size:12px;color:#14b8a6;font-weight:400;">Corporate Family Discovery</span></h1>
+<div class="sub">Jeff Boone &middot; Sibling DOT discovery &middot; CRM duplicate detection</div>
+</div>
+<div class="stats">
+<div class="sc"><div class="lb">Processed</div><div class="vl t">0</div></div>
+<div class="sc"><div class="lb">Accounts w/ Siblings</div><div class="vl t">0</div></div>
+<div class="sc"><div class="lb">Total Siblings</div><div class="vl">0</div></div>
+<div class="sc"><div class="lb">Confirmed</div><div class="vl g">0</div></div>
+<div class="sc"><div class="lb">Likely</div><div class="vl w">0</div></div>
+<div class="sc"><div class="lb">Unverified</div><div class="vl i">0</div></div>
+<div class="sc"><div class="lb">Other Rep Owned</div><div class="vl d">0</div></div>
+<div class="sc"><div class="lb">You Own Already</div><div class="vl i">0</div></div>
+<div class="sc"><div class="lb">Net-New to CRM</div><div class="vl g">0</div></div>
+<div class="sc"><div class="lb">Add'l Power Units</div><div class="vl">0</div></div>
+<div class="sc"><div class="lb">Add'l Drivers</div><div class="vl">0</div></div>
+</div>
+<div class="filters">
+<input type="text" class="search-box" id="search" placeholder="Search account, DOT, or sibling name...">
+<button class="f-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+<button class="f-btn" data-filter="other-rep" onclick="setFilter('other-rep')">Other Rep Owns</button>
+<button class="f-btn" data-filter="confirmed" onclick="setFilter('confirmed')">Has Confirmed</button>
+<button class="f-btn" data-filter="multi" onclick="setFilter('multi')">3+ Siblings</button>
+</div>
+<div class="table-wrap" id="results-container">
+<div class="empty">Bulk run is in progress. Results will populate here as accounts complete.<br><br>Refresh this page every 15-20 min to see new findings.</div>
+</div>
+<script>
+function toggleCard(hdr) { hdr.parentElement.classList.toggle('expanded'); }
+
+const searchBox = document.getElementById('search');
+let currentFilter = 'all';
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.f-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+function applyFilters() {
+  const q = searchBox.value.toLowerCase().trim();
+  document.querySelectorAll('.acct-card').forEach(card => {
+    const otherRep = parseInt(card.dataset.otherRep || 0);
+    const confirmed = parseInt(card.dataset.confirmed || 0);
+    const sibCount = parseInt(card.dataset.siblingCount || 0);
+    const searchStr = (card.dataset.search || '') + ' ' + card.textContent.toLowerCase();
+    let show = true;
+    if (currentFilter === 'other-rep' && otherRep === 0) show = false;
+    if (currentFilter === 'confirmed' && confirmed === 0) show = false;
+    if (currentFilter === 'multi' && sibCount < 3) show = false;
+    if (q && !searchStr.includes(q)) show = false;
+    card.style.display = show ? '' : 'none';
+  });
+}
+searchBox.addEventListener('input', applyFilters);
+</script>
+</body>
+</html>
